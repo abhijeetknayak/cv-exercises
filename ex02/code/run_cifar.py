@@ -6,7 +6,7 @@ import torch
 
 from lib.cifar_dataset import create_cifar_datasets, create_dataloader
 from lib.cifar_model import ConvModel
-import torch as th
+import torch
 from torch import nn, optim
 
 
@@ -39,7 +39,7 @@ def main():
         return
 
     # set our device
-    device = th.device("cuda:0" if th.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Running training on: {device}")
 
     # create model with 3 input channels for the RGB images
@@ -49,9 +49,8 @@ def main():
         print(f"Load model weights from {args.load_model}")
         # START TODO #################
         # load model weights from the file given by args.load_model and apply them to the model
-        # weights = th.load ...
-        # model.load_state_dict ...
-        raise NotImplementedError
+        weights = torch.load(args.load_model)
+        model.load_state_dict(weights)
         # END TODO ###################
 
     # move the model to our device
@@ -59,7 +58,7 @@ def main():
 
     if args.test_model:
         # test the model with random noise data and exit
-        random_input = th.randn((args.batch_size, 3, 32, 32), dtype=th.float32)
+        random_input = torch.randn((args.batch_size, 3, 32, 32), dtype=torch.float32)
         random_input = random_input.to(device)
         output = model(random_input)
         print(f"Model test complete. Output: {output.shape}")
@@ -67,22 +66,19 @@ def main():
 
     # Create the loss function (nn.CrossEntropyLoss)
     # START TODO #################
-    # loss_fn = ...
-    raise NotImplementedError
+    loss_fn = nn.CrossEntropyLoss()
     # END TODO ###################
 
     # create optimizer given the string in args.optimizer
     if args.optimizer == "sgd":
         # START TODO #################
         # create stochastic gradient descent optimizer (optim.SGD) given model.parameters() and args.learning_rate
-        # optimizer = ...
-        raise NotImplementedError
+        optimizer = optim.SGD(model.parameters(), args.learning_rate)
         # END TODO ###################
     elif args.optimizer == "adamw":
         # START TODO #################
         # create AdamW optimizer (optim.AdamW) given model.parameters() and args.learning_rate
-        # optimizer = ...
-        raise NotImplementedError
+        optimizer = optim.AdamW(model.parameters(), args.learning_rate)
         # END TODO ###################
     else:
         raise ValueError(f"Undefined optimizer: {args.optimizer}")
@@ -112,7 +108,16 @@ def main():
                 # 3) compute the loss between the output and the label by using loss_fn(output, label)
                 # 4) use loss.backward() to accumulate the gradients
                 # 5) use optimizer.step() to update the weights
-                raise NotImplementedError
+
+                optimizer.zero_grad()
+
+                y_pred = model(data)
+                loss = loss_fn(y_pred, label)
+
+                loss.backward()
+
+                optimizer.step()
+
                 # END TODO ###################
 
                 # log the loss
@@ -140,7 +145,16 @@ def main():
                 #   - use predictions == labels to get the correctness for each prediction
                 #   - use th.sum to get the total number of correct predictions
                 #   - divide by the batchsize to get the accuracy
-                raise NotImplementedError
+
+                y_pred = model(data)
+                loss = loss_fn(y_pred, label)
+
+                class_preds = torch.argmax(y_pred, dim=1)
+
+                accuracy = class_preds == label
+
+                acc = torch.sum(accuracy) / data.shape[0]
+
                 # END TODO ###################
 
                 total_loss += loss.item()
@@ -161,7 +175,8 @@ def main():
     print(f"Saving model to {model_file}")
     # START TODO #################
     # save the model to disk by using th.save with parameters model.state_dict() and model_file
-    raise NotImplementedError
+
+    torch.save(model.state_dict(), model_file)
     # END TODO ###################
 
 
