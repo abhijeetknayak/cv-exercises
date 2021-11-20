@@ -1,6 +1,7 @@
 output_plots/
 results*/
 code*/
+temp*/
 
 # big files
 *.synctex.gz*
