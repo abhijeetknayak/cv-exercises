@@ -1,4 +1,4 @@
-import cv2 
+import cv2
 import numpy as np
 
 def convolve2D(image, kernel, padding=0, strides=1):
@@ -11,17 +11,15 @@ def convolve2D(image, kernel, padding=0, strides=1):
 
     # Shape of Output Convolution
     # START TODO ###################
-    # xOutput =
-    # yOutput = 
-    raise NotImplementedError
+    xOutput = 1 + (xImgShape - xKernShape + 2 * padding) // strides
+    yOutput = 1 + (yImgShape - yKernShape + 2 * padding) // strides
     # END TODO ###################
     output = np.zeros((xOutput, yOutput))
 
     # Apply Equal Padding to All Sides
     if padding != 0:
         # START TODO ###################
-        # imagePadded = 
-        raise NotImplementedError
+        imagePadded = np.pad(image, (padding, padding))
         # END TODO ###################
     else:
         imagePadded = image
@@ -30,12 +28,18 @@ def convolve2D(image, kernel, padding=0, strides=1):
     for y in range(image.shape[1]):
         # Exit Convolution
         # START TODO ###################
-        raise NotImplementedError
+        if y + yKernShape >= image.shape[1]:
+            break
         # END TODO ###################
         
         # Only Convolve if y has gone down by the specified Strides
         # START TODO ###################
-        raise NotImplementedError
+        for x in range(0, image.shape[0] - xKernShape, strides):
+            oXstart = x // strides
+            oYstart = y // strides
+            output[oXstart, oYstart] = np.sum(imagePadded[x:x+xKernShape, y:y+yKernShape] * kernel)
+        y += strides
+
         # END TODO ###################
 
     return output
@@ -43,7 +47,7 @@ def convolve2D(image, kernel, padding=0, strides=1):
 
 if __name__ == '__main__':
     # Grayscale Image
-    image = cv2.imread('image.png',0)
+    image = cv2.imread('image.png', 0)
 
     # Edge Detection Kernel
     kernel = np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]])
