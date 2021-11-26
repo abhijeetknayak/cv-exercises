@@ -35,8 +35,9 @@ class ConvModel(nn.Module):
 
         self.conv1 = nn.Conv2d(in_channels=input_channels, out_channels=num_filters, kernel_size=(3, 3),
                                stride=(2, 2), padding=1)
-        self.bn1 = nn.BatchNorm2d(num_features=num_filters)
         self.relu = nn.ReLU()
+        self.bn1 = nn.BatchNorm2d(num_features=num_filters)
+
         self.conv2 = nn.Conv2d(in_channels=num_filters, out_channels=2*num_filters, kernel_size=(3, 3),
                                stride=(1, 1), padding=1)
         self.bn2 = nn.BatchNorm2d(num_features=2 * num_filters)
@@ -61,8 +62,9 @@ class ConvModel(nn.Module):
 
         # Apply first convolutional layer, batch norm and relu.
         x = self.conv1(x)
-        x = self.bn1(x)
         x = self.relu(x)
+        x = self.bn1(x)
+
 
         # END TODO ###################
         if self.verbose:
@@ -71,8 +73,9 @@ class ConvModel(nn.Module):
 
         # Apply second convolutional layer, batch norm and relu
         x = self.conv2(x)
-        x = self.bn2(x)
         x = self.relu(x)
+        x = self.bn2(x)
+
 
         # END TODO ###################
         if self.verbose:
