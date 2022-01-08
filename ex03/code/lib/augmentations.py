@@ -17,7 +17,14 @@ class horizontal_flip(torch.nn.Module):
         # draw a random number
         # flip the image in the second dimension 
         # if this number is smaller than self.p
-        raise NotImplementedError
+        p = np.random.rand()
+        img = np.asarray(img)
+
+        if p < self.p:
+            img = np.flip(img, dims=1)
+
+        return img
+
         # END TODO #################
 
 
@@ -33,7 +40,6 @@ class random_resize_crop(torch.nn.Module):
         super().__init__()
         self.size = size
         self.scale = scale
-
 
     def _uniform_rand(self, low, high):
         return np.random.rand(1)[0] * (low - high) + high

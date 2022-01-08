@@ -82,10 +82,7 @@ def validate_all_c(model,val_transform,device):
                 corruption_accs[c] = [acc1*100]
             print(f"Validation of {c} severity {s} complete. Loss {loss:.6f} accuracy {acc1:.2%}")
 
-
     return corruption_accs
-
-
 
 def update_bn_params(model, val_loader, args):
     # START TODO #################

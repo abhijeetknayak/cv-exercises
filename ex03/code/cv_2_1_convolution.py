@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-def convolve2D(image, kernel, padding=0, strides=1):
+def convolve2D(image, kernel, padding=0, strides=2):
 
     # Gather Shapes of Kernel + Image + Padding
     xKernShape = kernel.shape[0]
