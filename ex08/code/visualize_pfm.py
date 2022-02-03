@@ -14,8 +14,7 @@ import matplotlib.pyplot as plt
 
 class Sample:
     def __init__(self):
-        # gt_base_path = "/project/cv-ws2122/shared-data1/monodepth/test_images/scannet_gt/"
-        self.gt_base_path = "/home/bechtolj/Desktop/newex08/scannet_gt/"
+        self.gt_base_path = "/project/cv-ws2122/shared-data1/monodepth/test_images/scannet_gt/"
         self.rgb = None
         self.K_depth = None
         self.K_rgb = None
@@ -114,7 +113,15 @@ def show_pointcloud(depth, intrinsics, usemeshframe=False, rgb=None, name=''):
     draw = [pcd]
     if usemeshframe:
         draw.append(mesh_frame)
-    o3d.visualization.draw_geometries(draw, window_name=name)
+
+    if 'DISPLAY' not in os.environ:
+        visualizer = o3d.JVisualizer()
+        visualizer.add_geometry(pcd)
+        if usemeshframe:
+            visualizer.add_geometry(pcd)
+        visualizer.show()
+    else:
+        o3d.visualization.draw_geometries(draw, window_name=name)
 
 def save_pointcloud(filename, depth, intrinsics, rgb=None):
     pcd = point_cloud_from_rgbd(depth, intrinsics, rgb=rgb)

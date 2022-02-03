@@ -4,15 +4,15 @@
 ## Prerequisites
 - activate shared environment as before `conda activate dpt`
 - if this does not work, create your own `conda env create -f environment_dpt.yml`
-- create symlink to weights `ln -s /project/cv-ws2122/shared-data1/monodepth/dpt_large-midas-2f21e586.pt /project/cv-ws2122/<username>/cv-exercises/ex08/DPT/weights/dpt_large-midas-2f21e586.pt`
+- create symlink to weights `ln -s /project/cv-ws2122/shared-data1/monodepth/dpt_large-midas-2f21e586.pt /project/cv-ws2122/<username>/cv-exercises/ex08/code/weights/dpt_large-midas-2f21e586.pt`
 - create symlink for input data
-    - scannet: `ln -s /project/cv-ws2122/shared-data1/monodepth/test_images/scannet /project/cv-ws2122/lmb/cv-exercises/ex08/DPT/input/scannet`
-    - pix3d: `ln -s /project/cv-ws2122/shared-data1/monodepth/test_images/pix3d /project/cv-ws2122/lmb/cv-exercises/ex08/DPT/input/pix3d`
+    - scannet: `ln -s /project/cv-ws2122/shared-data1/monodepth/test_images/scannet /project/cv-ws2122/<username>/cv-exercises/ex08/code/input/scannet`
+    - pix3d: `ln -s /project/cv-ws2122/shared-data1/monodepth/test_images/pix3d /project/cv-ws2122/<username>/cv-exercises/ex08/code/input/pix3d`
 
 
 ## Task 1
 - run the monodepth estimation on the example images
-    `python run_monodepth.py -t dpt_large -i input/scannet -o output_monodepth/scannet`
+    `python run_monodepth.py -t dpt_large -i input/scannet -o output/scannet`
 - look at the png images and try to find mistakes from 2D depth
 - use the script `visualize_pfm.py` to read the predictions and visualize the depth as 3D PointCloud
     1. check if you can identify the errors you found in 2D also in 3D 

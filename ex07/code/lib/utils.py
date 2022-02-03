@@ -2,8 +2,13 @@ import os
 import os.path as osp
 import importlib
 
+import numpy as np
 import torch
 import torch.nn as nn
+from PIL import ImageDraw
+import cv2
+
+from .vis import np3d
 
 
 def get_function(name):  # from https://github.com/aschampion/diluvian/blob/master/diluvian/util.py
@@ -315,3 +320,357 @@ def shift(x, offset, padding_mode='zeros'):
     shifted = shifteds.squeeze(1)
 
     return shifted, mask
+
+
+def transform_from_rot_trans(R, t):
+    """Computes a transformation matrix from a rotation matrix and a translation vector."""
+    R = R.reshape(3, 3)
+    t = t.reshape(3, 1)
+    return np.vstack((np.hstack([R, t]), [0, 0, 0, 1]))
+
+
+def trans_from_transform(T):
+    """Computes a translation vector from a transformation matrix."""
+    return T[0:3, 3]
+
+
+def rot_from_transform(T):
+    """Computes a rotation matrix from a transformation matrix."""
+    return T[0:3, 0:3]
+
+
+def invert_transform(T):
+    """Inverts a transformation matrix."""
+    R = rot_from_transform(T)
+    t = trans_from_transform(T)
+    R_inv = R.T
+    t_inv = np.dot(-R.T, t)
+    return transform_from_rot_trans(R_inv, t_inv)
+
+
+def identity_transform():
+    """Initializes an identity transformation matrix."""
+    R = np.eye(3)
+    t = np.zeros(3)
+    return transform_from_rot_trans(R, t)
+
+
+def angleaxis_from_rot(R):
+    """Computes an angleaxis rotation representation from a rotation matrix.
+
+    An angleaxis representation is a vector where the vector direction represents the rotation axis and the vector
+    magnitude represents the rotation angle (in rad).
+    """
+    import scipy.spatial.transform
+    return scipy.spatial.transform.Rotation.from_matrix(R).as_rotvec()
+
+
+def angle_axis_from_angleaxis(angleaxis, eps=1e-6):
+    """Computes an angle, axis rotation representation from a rotation matrix.
+
+    An angle, axis representation is an axis vector with magnitude 1 whose direction represents the rotation axis and
+    an angle scalar that represents the rotation angle (in rad).
+    """
+    angle = np.linalg.norm(angleaxis)
+
+    if angle < eps:
+        angle = 0
+        axis = np.zeros(3)
+    else:
+        axis = angleaxis / angle
+
+    return angle, axis
+
+
+def angle_axis_from_rot(R, eps=1e-6):
+    """Computes an angle, axis rotation representation from a rotation matrix."""
+    return angle_axis_from_angleaxis(angleaxis_from_rot(R), eps=eps)
+
+
+def rot_from_angleaxis(angleaxis):
+    """Computes a rotation matrix from an angleaxis representation."""
+    import scipy.spatial.transform
+    return scipy.spatial.transform.Rotation.from_rotvec(angleaxis).as_matrix()
+
+
+def rot_from_angle_axis(angle, axis):
+    """Computes a rotation matrix from an angle, axis representation."""
+    angleaxis = angle * axis
+    return rot_from_angleaxis(angleaxis)
+
+def rot_x(t):
+    """Computes a rotation matrix for a rotation around the x-axis."""
+    c = np.cos(t)
+    s = np.sin(t)
+    return np.array([[1, 0, 0],
+                     [0, c, -s],
+                     [0, s, c]])
+
+
+def rot_y(t):
+    """Computes a rotation matrix for a rotation around the y-axis."""
+    c = np.cos(t)
+    s = np.sin(t)
+    return np.array([[c, 0, s],
+                     [0, 1, 0],
+                     [-s, 0, c]])
+
+
+def rot_z(t):
+    """Computes a rotation matrix for a rotation around the z-axis."""
+    c = np.cos(t)
+    s = np.sin(t)
+    return np.array([[c, -s, 0],
+                     [s, c, 0],
+                     [0, 0, 1]])
+
+
+def transform_from_rot_trans_2d(R, t):
+    """Computes a 2d transformation matrix from a rotation matrix and a translation vector."""
+    R = R.reshape(2, 2)
+    t = t.reshape(2, 1)
+    return np.vstack((np.hstack([R, t]), [0, 0, 1]))
+
+
+def cross_mat_from_vec(vec):
+    """Computes a matrix from a vector to express a cross product with that vector by a dot product with the matrix."""
+    vec_x = np.array([[0, -vec[2], vec[1]], [vec[2], 0, -vec[0]], [-vec[1], vec[0], 0]])
+    return vec_x
+
+
+def project_to_image(X_ref, K, to_ref_transform, return_hom=False):
+    """Projects a 3d point given in a reference coordinate system to image coordinates of the current image.
+
+    Args:
+        X_ref: (X,Y,Z) coordinates of the 3d point relative to a reference coordinate system.
+        K: Intrinsics of shape (3, 3).
+        to_ref_transform: Transformation matrix from the current to the reference camera. Note: this is the transform
+        that maps from the current to the reference coordinate system and that maps a point given in coordinates of
+        the reference camera to coordinates of the current camera, e.g. p_in_cur = to_ref_transform.dot(p_in_ref).
+        return_hom: Boolean flag that indicates whether the image coordinates should be returned in homogeneous form.
+
+    Returns:
+        Image coordinates of shape (2) if hom=False and shape (3) if hom=True.
+    """
+    # START TODO #################
+    # Outline:
+    # 1. Compute the camera matrix P from K and to_ref_transform.
+    # 2. Transform X_ref to homogeneous coordinates X_ref_hom by appending 1 using np.append.
+    # 3. Compute the homogeneous image coordinates x_hom by taking the dot product between P and X_ref_hom.
+    # 4. Compute x_hom by dividing x_hom[0] / x_hom[2] and x_hom[1] / x_hom[2].
+    # 5. Return x if return_hom is False, otherwise return x_hom.
+    raise NotImplementedError
+    # END TODO ###################
+
+
+def get_epipole(K, to_ref_transform, hom=False):
+    """Gets epipole coordinates from reference camera in current image.
+
+    The epipole is computed by projecting the center of the reference camera which is (0, 0, 0) to the current image.
+
+    Args:
+        K: Intrinsics of shape (3, 3).
+        to_ref_transform: Transformation matrix from the current to the reference camera. Note: this is the transform
+        that maps from the current to the reference coordinate system and that maps a point given in coordinates of
+        the reference camera to coordinates of the current camera, e.g. p_in_cur = to_ref_transform.dot(p_in_ref).
+        hom: Boolean flag that indicates whether the epipole should be returned in homogeneous coordinates.
+
+    Returns:
+        Epipole of shape (2) if hom=False and shape (3) if hom=True.
+    """
+    # START TODO #################
+    # Outline: construct a point (0, 0, 0) and use the function project_to_image to project it to the current image
+    # (pass the hom argument to return_hom of project_to_image).
+    raise NotImplementedError
+    # END TODO ###################
+
+
+def compute_essential_matrix(to_ref_transform):
+    """Computes the essential matrix from a reference camera to current camera.
+
+    The essential matrix is computed via E_ref_to_cur = tx * R.
+    t is the translation from the current to the reference camera. t_x is the skew-symmetric representation of
+    t that can be used for a cross product with t. R is the rotation from the current to the reference camera.
+
+    Args:
+        to_ref_transform: Transformation matrix from the current to the reference camera. Note: this is the transform
+        that maps from the current to the reference coordinate system and that maps a point given in coordinates of
+        the reference camera to coordinates of the current camera, e.g. p_in_cur = to_ref_transform.dot(p_in_ref).
+
+    Returns:
+        Essential matrix from reference camera to current camera.
+    """
+    # START TODO #################
+    # Outline:
+    # 1. Compute t, R, tx using the functions trans_from_transform, rot_from_transform, cross_mat_from_vec from above.
+    # 2. Compute E_ref_to_cur as dot product from tx and R.
+    raise NotImplementedError
+    # END TODO ###################
+
+
+def compute_fundamental_matrix(K, to_ref_transform):
+    """Computes the fundamental matrix from a reference camera to current camera.
+
+    The fundamental matrix is computed via F_ref_to_cur = e_cur_x * P_cur * P_ref_inv.
+    e_cur is the epipole of the reference camera in the current image. e_cur_x is the skew-symmetric representation of
+    e_cur that can be used for a cross product with e_cur.
+
+    Args:
+        K: Intrinsics of shape (3, 3).
+        to_ref_transform: Transformation matrix from the current to the reference camera. Note: this is the transform
+        that maps from the current to the reference coordinate system and that maps a point given in coordinates of
+        the reference camera to coordinates of the current camera, e.g. p_in_cur = to_ref_transform.dot(p_in_ref).
+
+    Returns:
+        Fundamental matrix from reference camera to current camera.
+    """
+    # START TODO #################
+    # Outline:
+    # 1. Compute epi_from_ref_in_cur_x using the functions get_epipole and cross_mat_from_vec.
+    # 2. Compute P_cur from K and to_ref_transform.
+    # 3. Compute _Pref from K and an identity transform.
+    # 4. Invert P_ref using np.linalg.pinv
+    # 5. Compute F as dot product from epi_from_ref_in_cur_x, P_cur and P_ref_inv.
+    raise NotImplementedError
+    # END TODO ###################
+
+
+def plot_epipolar_line(image_cur, F_ref_to_cur, x_ref, line_color=(255, 0, 0)):
+    image_cur = np3d(image_cur, image_range_text_off=True)
+
+    x_ref = np.append(np.array(x_ref), 1)
+    l_cur = np.dot(F_ref_to_cur, x_ref)
+    x_0 = -1
+    y_0 = (-l_cur[2] - (x_0 * l_cur[0])) / l_cur[1]
+    x_1 = image_cur.width + 1
+    y_1 = (-l_cur[2] - (x_1 * l_cur[0])) / l_cur[1]
+
+    draw = ImageDraw.Draw(image_cur)
+    draw.line((x_0, y_0) + (x_1, y_1), fill=line_color, width=4)
+    return np.array(image_cur)
+
+
+def rectify_images(image_l, image_r, K, r_to_l_transform):
+    """Rectifies two images with a known camera calibration using bouquet's algorithm.
+
+    This algorithm is also applied in the OpenCV function cvStereoRectify().
+    A description of the algorithm can be found in the book
+    Learning OpenCV by Gary Bradski and Adrian Kaehler, O'Reilly, page 433
+    ( https://www.bogotobogo.com/cplusplus/files/OReilly%20Learning%20OpenCV.pdf ).
+    Here, we use a similar notation as in the book.
+
+    Args:
+        image_l: Left image of shape (3, H, W).
+        image_l: Left image of shape (3, H, W).
+        K: Intrinsics of shape (3, 3).
+        r_to_l_transform: Transformation matrix from the right to the left camera. Note: this is the transform
+        that maps from the right to the left coordinate system and that maps a point given in coordinates of
+        the left camera to coordinates of the right camera, e.g. p_in_r = r_to_l_transform.dot(p_in_l).
+
+    Returns:
+        Tuple (image_l_rect, image_r_rect, H_l, H_r, rrect_to_lrect_transform) containing
+            image_l_rect: Rectified left image.
+            image_r_rect: Rectified right image.
+            H_l: Homography that was applied to the left image for rectification.
+            H_r: Homography that was applied to the right image for rectification.
+            rrect_to_lrect_transform: Transformation matrix from the right to the left rectified camera.
+    """
+    # 1. Rotate right camera and left camera in 3d such that they have the same direction:
+    # To do so, transfer the known rotation between the cameras
+    # to an angle, axis representation (use functions rot_from_transform, angle_axis_from_rot, etc. from above).
+    # Then create a rotation matrix that rotates both cameras around the axis for +/- angle/2.
+    # START TODO ###################
+    raise NotImplementedError
+    # END TODO ###################
+
+    # 2. Rotate cameras (in 3d) such that epipole goes to infinity:
+    # To do so, construct a rotation matrix R_rect such that the baseline (=translation vector)
+    # between the cameras is transformed to a vector of the form (translation_norm, 0, 0).
+    # The construction of R_rect is described in the book mentioned above.
+    # START TODO ###################
+    raise NotImplementedError
+    # END TODO ###################
+    R_rect = np.stack([e1, e2, e3])
+
+    # 3. Combine the rotations r_r, r_l, R_rect to get rotation matrices R_l and R_r for both cameras:
+    # R_l = R_rect*r_l
+    # R_r = R_rect*r_r
+    # START TODO ###################
+    raise NotImplementedError
+    # END TODO ###################
+
+    # A rotation R in 3d leads to a homography H = K*R*K^-1 which can be
+    # applied to the image to warp it to the rotated viewing direction.
+    # 4. Compute the homographies H_l and H_r for the left and right images:
+    # You can use np.linalg.inv() to invert K.
+    # START TODO ###################
+    raise NotImplementedError
+    # END TODO ###################
+
+    # 5. Compute the transformation rrect_to_lrect_transform between the rectified cameras:
+    # R_l is actually a rotation lrect_to_l_rotation and R_r is rrect_to_r_rotation.
+    # Hence it is: rrect_to_lrect_transform = rrect_to_r_transform * r_to_l_transform * lrect_to_l_transform^-1.
+    lrect_to_l_transform = transform_from_rot_trans(R_l, np.zeros(3))
+    rrect_to_r_transform = transform_from_rot_trans(R_r, np.zeros(3))
+    rrect_to_lrect_transform = rrect_to_r_transform.dot(r_to_l_transform).dot(
+        invert_transform(lrect_to_l_transform))
+    # Alternatively, we could exploit that we know that
+    # a) there is no rotation between the rectified cameras
+    # b) there is only a x-translation between the rectified cameras
+    # Hence:
+    # rrect_to_lrect_transform = transform_from_rot_trans(np.eye(3), np.array([-np.linalg.norm(T), 0, 0]))
+
+    # 6. Rectify the left and right images by warping with the homographies:
+    import cv2
+    image_l_rect = cv2.warpPerspective(image_l.transpose([1, 2, 0]), H_l, image_l.shape[-2:][::-1])
+    image_r_rect = cv2.warpPerspective(image_r.transpose([1, 2, 0]), H_r, image_r.shape[-2:][::-1])
+    image_l_rect = image_l_rect.transpose([2, 0, 1])
+    image_r_rect = image_r_rect.transpose([2, 0, 1])
+
+    return image_l_rect, image_r_rect, H_l, H_r, rrect_to_lrect_transform
+
+
+def rectify_images_with_opencv(image_l, image_r, K, r_to_l_transform):
+    # this function can be ignored for the exercise
+    import cv2
+
+    distCoeff = np.zeros(4, dtype=np.float64)
+    R = rot_from_transform(r_to_l_transform).astype(np.float64)
+    t = trans_from_transform(r_to_l_transform).astype(np.float64)
+
+    image_size = (image_l.shape[-1], image_l.shape[-2])
+
+    R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(
+        cameraMatrix1=K,
+        distCoeffs1=distCoeff,
+        cameraMatrix2=K,
+        distCoeffs2=distCoeff,
+        imageSize=image_size,
+        R=R,
+        T=t,
+        flags=cv2.CALIB_ZERO_DISPARITY,
+        alpha=1)
+
+    map1x, map1y = cv2.initUndistortRectifyMap(
+        cameraMatrix=K,
+        distCoeffs=distCoeff,
+        R=R1,
+        newCameraMatrix=P1,
+        size=image_size,
+        m1type=cv2.CV_32FC1)
+
+    map2x, map2y = cv2.initUndistortRectifyMap(
+        cameraMatrix=K,
+        distCoeffs=distCoeff,
+        R=R2,
+        newCameraMatrix=P2,
+        size=image_size,
+        m1type=cv2.CV_32FC1)
+
+    image_l_rect = cv2.remap(image_l.transpose([1, 2, 0]), map1x, map1y, cv2.INTER_LINEAR)
+    image_r_rect = cv2.remap(image_r.transpose([1, 2, 0]), map2x, map2y, cv2.INTER_LINEAR)
+
+    image_l_rect = image_l_rect.transpose([2, 0, 1])
+    image_r_rect = image_r_rect.transpose([2, 0, 1])
+
+    return image_l_rect, image_r_rect

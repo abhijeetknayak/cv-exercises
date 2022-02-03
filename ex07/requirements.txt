@@ -5,3 +5,4 @@ pillow
 pytoml
 opencv-python
 pandas
+scipy
