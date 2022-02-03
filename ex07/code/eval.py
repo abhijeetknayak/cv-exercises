@@ -31,7 +31,7 @@ def setup_model(args):
         model = DispNetS(C=args.C)
 
     model.cuda()
-    model.train()
+    model.eval()
 
     return model
 
