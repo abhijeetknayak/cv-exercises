@@ -15,6 +15,12 @@ if [ -f ~/.bashrc ]; then
 fi
 ```
 
+### Access data options
+- work on pool pcs
+- copy to local via vscode (right click -> download)
+- scp
+- mout the shared-data1 directory on your local machine using sshfs
+
 ### Access denied / Password issues
 - Problem: login at [NextCloud](https://nc.informatik.uni-freiburg.de/index.php/apps/rainloop/) works but not when using ssh
 - Solution: do not use Umlauts (äöüß etc) in you password. Different encodings in the browser (setting the password) and terminal lead to different hashes
